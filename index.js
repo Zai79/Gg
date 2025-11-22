@@ -25,23 +25,22 @@ for (const file of commandFiles) {
 }
 
 client.on("ready", () => {
-    console.log(`🔰 Logged in as ${client.user.tag}`);
+  console.log(`🔥 Logged in as ${client.user.tag}`);
 
-    // جلب الروم من خلال الـ CHANNEL_ID
-    const channel = client.channels.cache.get(process.env.CHANNEL_ID);
+  const channel = client.channels.cache.get(process.env.CHANNEL_ID);
 
-    if (!channel) {
-        console.log("⚠️ الروم غير موجود أو الايدي غلط!");
-        return;
-    }
+  if (!channel) {
+    console.log("⚠️ الروم غير موجود أو الآيدي غلط!");
+    return;
+  }
 
-    // إرسال رسالة عند تشغيل البوت
-    channel.send("✅ البوت اشتغل بنجاح!").catch(console.error);
+  channel.send("✅ البوت اشتغل بنجاح!").catch(console.error);
 });
 
-// تفعيل الأوامر
+// ===================== حدث السلاش =====================
 client.on("interactionCreate", async interaction => {
   if (!interaction.isChatInputCommand()) return;
+
   const command = client.commands.get(interaction.commandName);
   if (!command) return;
 
@@ -49,15 +48,32 @@ client.on("interactionCreate", async interaction => {
     await command.execute(interaction, client);
   } catch (err) {
     console.error(err);
-    return interaction.reply({ content: "❌ صار خطأ أثناء تنفيذ الأمر!", ephemeral: true });
+    return interaction.reply({
+      content: "❌ صار خطأ أثناء تنفيذ الأمر!",
+      ephemeral: true
+    });
   }
 });
-// Register slash commands automatically on startup
+
+// ===================== حدث الأزرار =====================
+client.on("interactionCreate", async interaction => {
+  if (!interaction.isButton()) return;
+
+  const id = interaction.customId;
+
+  // زر الرسائل السرية يبدأ بـ secret
+  if (id.startsWith("secret")) {
+    const command = client.commands.get("secret");
+    if (command?.button) {
+      return command.button(interaction);
+    }
+  }
+});
+
+// ===================== تسجيل أوامر السلاش =====================
 (async () => {
   try {
     const { REST, Routes } = require("discord.js");
-    const fs = require("fs");
-    const path = require("path");
 
     const commands = [];
     const commandsPath = path.join(__dirname, "commands");
@@ -75,9 +91,9 @@ client.on("interactionCreate", async interaction => {
       { body: commands }
     );
 
-    console.log("✅ الأوامر تم تسجيلها تلقائيًا!");
+    console.log("✔️ الأوامر تم تسجيلها تلقائياً!");
   } catch (error) {
-    console.error("🔴 خطأ أثناء تسجيل الأوامر:", error);
+    console.error("❌ خطأ أثناء تسجيل الأوامر:", error);
   }
 })();
 
