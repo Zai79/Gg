@@ -25,7 +25,18 @@ for (const file of commandFiles) {
 }
 
 client.on("ready", () => {
-  console.log(`🚀 Logged in as ${client.user.tag}`);
+    console.log(`🔰 Logged in as ${client.user.tag}`);
+
+    // جلب الروم من خلال الـ CHANNEL_ID
+    const channel = client.channels.cache.get(process.env.CHANNEL_ID);
+
+    if (!channel) {
+        console.log("⚠️ الروم غير موجود أو الايدي غلط!");
+        return;
+    }
+
+    // إرسال رسالة عند تشغيل البوت
+    channel.send("✅ البوت اشتغل بنجاح!").catch(console.error);
 });
 
 // تفعيل الأوامر
