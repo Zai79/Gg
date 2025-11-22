@@ -1,65 +1,85 @@
-const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+
+const {
+    SlashCommandBuilder,
+    EmbedBuilder,
+    ActionRowBuilder,
+    ButtonBuilder,
+    ButtonStyle
+} = require("discord.js");
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('secret')
-        .setDescription('إرسال رسالة مخفية لشخص أو عدة أشخاص')
-        .addStringOption(option =>
-            option.setName('الرسالة')
-                .setDescription('الرسالة السرية')
-                .setRequired(true))
-        .addUserOption(option =>
-            option.setName('شخص1')
-                .setDescription('الشخص المسموح له'))
-        .addUserOption(option =>
-            option.setName('شخص2')
-                .setDescription('شخص إضافي'))
-        .addIntegerOption(option =>
-            option.setName('عدد')
-                .setDescription('عدد الأشخاص الأوائل الذين يمكنهم فتح الرسالة')),
+        .setName("secret")
+        .setDescription("إرسال رسالة سرية لشخص")
+        .addUserOption(o =>
+            o.setName("target")
+                .setDescription("الشخص الذي سترسل له الرسالة")
+                .setRequired(true)
+        )
+        .addStringOption(o =>
+            o.setName("message")
+                .setDescription("محتوى الرسالة السرية")
+                .setRequired(true)
+        ),
 
     async execute(interaction) {
+        const sender = interaction.user;
+        const target = interaction.options.getUser("target");
+        const secretMessage = interaction.options.getString("message");
 
-        // البيانات
-        const msg = interaction.options.getString('الرسالة');
-        const user1 = interaction.options.getUser('شخص1');
-        const user2 = interaction.options.getUser('شخص2');
-        const countLimit = interaction.options.getInteger('عدد') || 0;
-
-        // حفظ الأشخاص المسموح لهم
-        const allowedUsers = [];
-        if (user1) allowedUsers.push(user1.id);
-        if (user2) allowedUsers.push(user2.id);
-
-        // Embed عام
+        // الإمبيد الظاهر للجميع
         const embed = new EmbedBuilder()
-            .setTitle("رسالة مخفية 🔒")
-            .setDescription(`لديك رسالة سرية!  
-اضغط الزر أدناه لعرض الرسالة.`)
-            .setColor("#7a00ff");
+            .setTitle("🔒 رسالة مخفية")
+            .setDescription(
+                `لديك رسالة سرية!\n\n` +
+                `📩 **من:** <@${sender.id}>\n` +
+                `👤 **إلى:** <@${target.id}>\n\n` +
+                `اضغط الزر أدناه لعرض الرسالة.`
+            )
+            .setColor("#9b59b6");
 
-        // زر العرض
-        const row = new ActionRowBuilder().addComponents(
+        const button = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
-                .setCustomId("open_secret")
-                .setLabel("عرض الرسالة 🔒")
+                .setCustomId(`secret-${sender.id}-${target.id}`)
+                .setLabel("🔒 عرض الرسالة")
                 .setStyle(ButtonStyle.Primary)
         );
 
-        // إرسال الرسالة العامة
-        const sent = await interaction.reply({
+        await interaction.reply({
             embeds: [embed],
-            components: [row],
-            fetchReply: true
+            components: [button]
         });
 
-        // حفظ بيانات الرسالة في ذاكرة مؤقتة
-        global.secretData = global.secretData || {};
-        global.secretData[sent.id] = {
-            msg,
-            allowedUsers,
-            countLimit,
-            opened: []
-        };
+        // حفظ الرسالة داخل الأوبجكت (بدون قاعدة بيانات)
+        interaction.client.secretMessages ??= {};
+        interaction.client.secretMessages[`secret-${sender.id}-${target.id}`] = secretMessage;
+    },
+
+    // معالجة الزر
+    async button(interaction) {
+        const [_, senderId, targetId] = interaction.customId.split("-");
+
+        // السماح فقط للمرسل أو المستلم
+        if (interaction.user.id !== senderId && interaction.user.id !== targetId) {
+            return interaction.reply({
+                content: "❌ الرسالة مو لك يا غبي 🤓",
+                ephemeral: true
+            });
+        }
+
+        // جلب الرسالة
+        const msg = interaction.client.secretMessages?.[interaction.customId];
+
+        if (!msg) {
+            return interaction.reply({
+                content: "⚠️ ما لقيت الرسالة! يمكن تم إعادة تشغيل البوت.",
+                ephemeral: true
+            });
+        }
+
+        return interaction.reply({
+            content: `💬 **رسالتك:**\n${msg}`,
+            ephemeral: true
+        });
     }
 };
