@@ -1,38 +1,65 @@
-const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
+const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 
 module.exports = {
-  data: new SlashCommandBuilder()
-    .setName("secret")
-    .setDescription("إرسال رسالة سرية")
-    .addUserOption(option =>
-      option.setName("user").setDescription("الشخص اللي ترسل له الرسالة").setRequired(true)
-    )
-    .addStringOption(option =>
-      option.setName("message").setDescription("محتوى الرسالة").setRequired(true)
-    ),
+    data: new SlashCommandBuilder()
+        .setName('secret')
+        .setDescription('إرسال رسالة مخفية لشخص أو عدة أشخاص')
+        .addStringOption(option =>
+            option.setName('الرسالة')
+                .setDescription('الرسالة السرية')
+                .setRequired(true))
+        .addUserOption(option =>
+            option.setName('شخص1')
+                .setDescription('الشخص المسموح له'))
+        .addUserOption(option =>
+            option.setName('شخص2')
+                .setDescription('شخص إضافي'))
+        .addIntegerOption(option =>
+            option.setName('عدد')
+                .setDescription('عدد الأشخاص الأوائل الذين يمكنهم فتح الرسالة')),
 
-  async execute(interaction, client) {
-    const user = interaction.options.getUser("user");
-    const msg = interaction.options.getString("message");
+    async execute(interaction) {
 
-    const embed = new EmbedBuilder()
-      .setTitle("🔒 رسالة مخفية")
-      .setDescription(`لديك رسالة سرية من **${interaction.user.username}**`)
-      .setColor("#b57bff");
+        // البيانات
+        const msg = interaction.options.getString('الرسالة');
+        const user1 = interaction.options.getUser('شخص1');
+        const user2 = interaction.options.getUser('شخص2');
+        const countLimit = interaction.options.getInteger('عدد') || 0;
 
-    const row = new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId(`open_secret_${interaction.id}`)
-        .setLabel("عرض الرسالة السرية 🔒")
-        .setStyle(ButtonStyle.Secondary)
-    );
+        // حفظ الأشخاص المسموح لهم
+        const allowedUsers = [];
+        if (user1) allowedUsers.push(user1.id);
+        if (user2) allowedUsers.push(user2.id);
 
-    await user.send({ embeds: [embed], components: [row] }).catch(() => null);
+        // Embed عام
+        const embed = new EmbedBuilder()
+            .setTitle("رسالة مخفية 🔒")
+            .setDescription(`لديك رسالة سرية!  
+اضغط الزر أدناه لعرض الرسالة.`)
+            .setColor("#7a00ff");
 
-    await interaction.reply({ content: "✔️ تم إرسال الرسالة المخفية", ephemeral: true });
+        // زر العرض
+        const row = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+                .setCustomId("open_secret")
+                .setLabel("عرض الرسالة 🔒")
+                .setStyle(ButtonStyle.Primary)
+        );
 
-    // نخزن الرسالة في لوق (نكمل هذي بعدين)
-    client.secretMessages = client.secretMessages || {};
-    client.secretMessages[interaction.id] = msg;
-  },
+        // إرسال الرسالة العامة
+        const sent = await interaction.reply({
+            embeds: [embed],
+            components: [row],
+            fetchReply: true
+        });
+
+        // حفظ بيانات الرسالة في ذاكرة مؤقتة
+        global.secretData = global.secretData || {};
+        global.secretData[sent.id] = {
+            msg,
+            allowedUsers,
+            countLimit,
+            opened: []
+        };
+    }
 };
